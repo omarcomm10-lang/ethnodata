@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+////////////////////////////////////////////////////////////
+// ENUMS
+////////////////////////////////////////////////////////////
+
+enum UserRole {
+  VISITOR
+  USER
+  COLLECTOR
+  COMMUNITY_VALIDATOR
+  INSTITUTIONAL_VALIDATOR
+  ADMIN
+}
+
+enum ConfidentialityLevel {
+  PUBLIC
+  RESTRICTED
+  CONFIDENTIAL
+}
+
+enum EthnoDataStatus {
+  DRAFT
+  SUBMITTED
+  COMMUNITY_VALIDATION
+  INSTITUTIONAL_VALIDATION
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum ValidationDecision {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+}
+
+////////////////////////////////////////////////////////////
+// USERS
+////////////////////////////////////////////////////////////
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  uploadedMedia Media[]  @relation("MediaUploadedBy")
+
+  validationsAsValidator Validation[] @relation("ValidationValidator")
+
+  ethnoDataItems EthnoDataItem[]
+}
+
+////////////////////////////////////////////////////////////
+// ETHNODATA (contenu principal)
+////////////////////////////////////////////////////////////
+
+model EthnoDataItem {
+  id          String               @id @default(uuid())
+  title       String
+  description String
+  status      EthnoDataStatus      @default(DRAFT)
+  visibility  ConfidentialityLevel @default(PUBLIC)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  media       Media[]
+  validations Validation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+////////////////////////////////////////////////////////////
+// MEDIA (audio, image, vidéo, document)
+////////////////////////////////////////////////////////////
+
+model Media {
+  id   String @id @default(uuid())
+  type String
+  url  String
+
+  itemId String
+  item   EthnoDataItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  uploadedById String?
+  uploadedBy   User?   @relation("MediaUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
+
+////////////////////////////////////////////////////////////
+// VALIDATIONS (communautaire / institutionnelle)
+////////////////////////////////////////////////////////////
+
+model Validation {
+  id       String             @id @default(uuid())
+  decision ValidationDecision
+  comment  String?
+
+  validatorId String?
+  validator   User?   @relation("ValidationValidator", fields: [validatorId], references: [id], onDelete: SetNull)
+
+  itemId String
+  item   EthnoDataItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([validatorId, itemId])
+  @@index([validatorId])
+  @@index([itemId])
+}
