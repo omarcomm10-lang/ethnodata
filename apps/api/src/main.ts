@@ -1,40 +1,32 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-
 import { AppModule } from './app.module';
+
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Active la validation + transforme les query params en types (number, etc.)
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // supprime les champs inconnus
-      forbidNonWhitelisted: false, // mets true si tu veux refuser (400) les champs inconnus
-      transform: true, // transforme "take=20" => 20 (number)
-      transformOptions: { enableImplicitConversion: true },
-    }),
-  );
+  // (Optionnel mais utile)
+  app.enableCors();
 
+  // Swagger config
   const config = new DocumentBuilder()
-    .setTitle('Application')
-    .setDescription('API Ethnodata')
-    .setVersion('1.0')
+    .setTitle('Ethnodata API')
+    .setDescription('Documentation interactive de l’API Ethnodata')
+    .setVersion('1.0.0')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('api', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-  });
+  // URL Swagger => /docs
+  SwaggerModule.setup('docs', app, document);
 
-  await app.listen(3000);
+  // Render fournit le port dans process.env.PORT
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+
+  console.log(`🚀 API en ligne sur : http://localhost:${port}`);
+  console.log(`📚 Swagger sur : http://localhost:${port}/docs`);
 }
 
-// ✅ évite le warning ESLint no-floating-promises
-bootstrap().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
-  process.exit(1);
-});
+bootstrap();
